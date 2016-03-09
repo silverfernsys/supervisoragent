@@ -103,6 +103,22 @@ class ProcInfo(object):
         'mem': self.mem,
         }
 
+
+    def data(self):
+        return {'name': self.name,
+        'group': self.group,
+        'pid': self._pid,
+        'state': self._state,
+        'statename': self._statename,
+        'start': self.start,
+        'cpu': self.cpu,
+        'mem': self.mem,
+        }
+
+    def reset(self):
+        self.cpu = []
+        self.mem = []
+
     @classmethod
     def get(self, group, name):
         try:
@@ -128,6 +144,18 @@ class ProcInfo(object):
     def updateall(self):
         for p in ProcInfo.all():
             p.update()
+
+    @classmethod
+    def data_all(self):
+        data = []
+        for p in ProcInfo.all():
+            data.append(p.data())
+        return data
+
+    @classmethod
+    def reset_all(self):
+        for p in ProcInfo.all():
+            p.reset()
 
     @classmethod
     def purge(self):

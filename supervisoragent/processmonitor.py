@@ -33,6 +33,7 @@ class WebSocketHandler(object):
     PushInterval = 0
     PushThread = None
     IsConnected = False
+    Connection = None
 
     @classmethod
     def on_message(self, ws, message):
@@ -52,9 +53,12 @@ class WebSocketHandler(object):
     @classmethod
     def on_open(self, ws):
         WebSocketHandler.IsConnected = True
+        WebSocketHandler.Connection = ws
         def push_stats(*args):
             while WebSocketHandler.IsConnected:
-                ws.send("STATS!")
+                ws.send(json.dumps(ProcInfo.data_all()))
+                ProcInfo.reset_all()
+                # ws.send("STATS!")
                 time.sleep(WebSocketHandler.PushInterval)
 
         WebSocketHandler.PushThread = threading.Thread(target=push_stats)
@@ -155,8 +159,16 @@ class ProcessMonitor():
                         p.pid = None
                     else:
                         p.pid = json_data['pid']
-
                     # We need to now send data off on the websocket!
+                    # This is where push_update_thread's websocket needs to push
+                    # data to the server that a process's state has changed.
+                    if WebSocketHandler.IsConnected:
+                        data = p.data()
+                        # No need for cpu or mem data for this update since this
+                        # update is about the application's running state.
+                        data.pop('cpu', None)
+                        data.pop('mem', None)
+                        WebSocketHandler.Connection.send(json.dumps([data]))
             except Exception as e:
                 print('Exception: %s' % e)
                 print('Closing connection...')

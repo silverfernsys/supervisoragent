@@ -40,7 +40,7 @@ class Agent(object):
         return ret_data
         
         # We're going to shutdown here
-        statusserver.shutdown()
+        # statusserver.shutdown()
 
 
 def resolveConfig(config, args):
