@@ -28,6 +28,70 @@ class UnixStreamTransport(xmlrpclib.Transport, object):
     def make_connection(self, host):
         return UnixStreamHTTPConnection(self.socket_path)
 
+xmlrpc = xmlrpclib.Server('http://arg_unused', transport=UnixStreamTransport('/var/run/supervisor.sock'))
+
+def stopProcesses(args):
+    if len(args) == 1 and '*' in args:
+        xmlrpc.supervisor.stopAllProcesses()
+    else:
+        for arg in args:
+            try:
+                xmlrpc.supervisor.stopProcess(arg)
+            except Exception as e:
+                print('Exception stopping process %s: %s' % (arg, e))
+
+def startProcesses(args):
+    if len(args) == 1 and '*' in args:
+        xmlrpc.supervisor.startAllProcesses()
+    else:
+        for arg in args:
+            try:
+                xmlrpc.supervisor.startProcess(arg)
+            except Exception as e:
+                print('Exception starting process %s: %s' % (arg, e))
+
+def restartProcesses(args):
+    stopProcesses(args)
+    startProcesses(args)
+
+# 'supervisor.addProcessGroup',
+# 'supervisor.clearAllProcessLogs',
+# 'supervisor.clearLog',
+# 'supervisor.clearProcessLog',
+# 'supervisor.clearProcessLogs',
+# 'supervisor.getAPIVersion',
+# 'supervisor.getAllConfigInfo',
+# 'supervisor.getAllProcessInfo',
+# 'supervisor.getIdentification',
+# 'supervisor.getPID',
+# 'supervisor.getProcessInfo',
+# 'supervisor.getState',
+# 'supervisor.getSupervisorVersion',
+# 'supervisor.getVersion',
+# 'supervisor.readLog',
+# 'supervisor.readMainLog',
+# 'supervisor.readProcessLog',
+# 'supervisor.readProcessStderrLog',
+# 'supervisor.readProcessStdoutLog',
+# 'supervisor.reloadConfig',
+# 'supervisor.removeProcessGroup',
+# 'supervisor.restart',
+# 'supervisor.sendProcessStdin',
+# 'supervisor.sendRemoteCommEvent',
+# 'supervisor.shutdown',
+# 'supervisor.startAllProcesses',
+# 'supervisor.startProcess',
+# 'supervisor.startProcessGroup',
+# 'supervisor.stopAllProcesses',
+# 'supervisor.stopProcess',
+# 'supervisor.stopProcessGroup',
+# 'supervisor.tailProcessLog',
+# 'supervisor.tailProcessStderrLog',
+# 'supervisor.tailProcessStdoutLog',
+# 'system.listMethods',
+# 'system.methodHelp',
+# 'system.methodSignature',
+# 'system.multicall'
 
 class WebSocketHandler(object):
     PushInterval = 0
@@ -37,8 +101,27 @@ class WebSocketHandler(object):
 
     @classmethod
     def on_message(self, ws, message):
-        # This is where you get the 'Ack' and update the current
-        # timestamp accordingly.
+        # This is where you receive messages to start, stop, and restart
+        """
+        This is where you receive messages to start,
+        stop, and restart supervisor processes.
+        message = {'cmd': 'start *'}
+        message = {'cmd': 'stop celery'}
+        message = {'cmd': 'restart web'}
+        """
+        msg = json.loads(message)
+        cmd = msg['cmd'].split(' ')[0]
+        args = msg['cmd'].split(' ')[1:]
+
+        if cmd == 'start':
+            startProcesses(args)
+        elif cmd == 'stop':
+            stopProcesses(args)
+        elif cmd == 'restart':
+            restartProcesses(args)
+
+        response = {'return': 'success'}
+        ws.send(json.dumps(response))
         print message
 
     @classmethod
@@ -75,15 +158,13 @@ class ProcessMonitor():
     def __init__(self, **kwargs):
         self.sample_interval = kwargs['sample_interval']
         self.push_interval = kwargs['push_interval']
-        self.xmlrpc = xmlrpclib.Server('http://arg_unused',
-            transport=UnixStreamTransport('/var/run/supervisor.sock'))
         self.token = kwargs['token']
         self.url = kwargs['url']
-        ProcessMonitor.version = float(self.xmlrpc.supervisor.getVersion())
+        ProcessMonitor.version = float(xmlrpc.supervisor.getVersion())
 
-        data = self.xmlrpc.supervisor.getAllProcessInfo()
-        # print(self.xmlrpc.supervisor.getState())
-        # print(self.xmlrpc.system.listMethods())
+        data = xmlrpc.supervisor.getAllProcessInfo()
+        print(xmlrpc.supervisor.getState())
+        print(xmlrpc.system.listMethods())
         # print('data: %s' % data)
         for d in data:
             ProcInfo(d['group'], d['name'], d['pid'], d['state'], d['statename'], d['start'])
