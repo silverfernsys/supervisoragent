@@ -11,6 +11,10 @@ import xmlrpclib
 import sys
 from procinfo import ProcInfo
 
+
+SNAPSHOT_UPDATE = 'snapshot_update'
+STATE_UPDATE = 'state_update'
+
 class UnixStreamHTTPConnection(httplib.HTTPConnection):
     def connect(self):
         try:
@@ -28,70 +32,57 @@ class UnixStreamTransport(xmlrpclib.Transport, object):
     def make_connection(self, host):
         return UnixStreamHTTPConnection(self.socket_path)
 
+
 xmlrpc = xmlrpclib.Server('http://arg_unused', transport=UnixStreamTransport('/var/run/supervisor.sock'))
 
+
 def stopProcesses(args):
+    ret_val = []
     if len(args) == 1 and '*' in args:
-        xmlrpc.supervisor.stopAllProcesses()
+        try:
+            xmlrpc.supervisor.stopAllProcesses()
+            ret_val.append({'result': 'success', 'cmd': 'stop', 'process': '*', 'details': 'Stopped all processes'})
+        except Exception as e:
+            print('Exception stopping all processes')
+            ret_val.append({'result': 'error', 'cmd': 'stop', 'process': '*', 'details': str(e)})
     else:
         for arg in args:
             try:
                 xmlrpc.supervisor.stopProcess(arg)
+                ret_val.append({'result': 'success', 'cmd': 'stop', 'process': arg, 'details': 'Stopped process {0}'.format(arg)})
             except Exception as e:
                 print('Exception stopping process %s: %s' % (arg, e))
+                ret_val.append({'result': 'error', 'cmd': 'stop', 'process': arg, 'details': str(e)})
+    return ret_val
+
 
 def startProcesses(args):
+    ret_val = []
     if len(args) == 1 and '*' in args:
-        xmlrpc.supervisor.startAllProcesses()
+        try:
+            xmlrpc.supervisor.startAllProcesses()
+            ret_val.append({'result': 'success', 'cmd': 'start', 'process': '*', 'details': 'Started all processes'})
+        except Exception as e:
+            print('Exception starting all processes')
+            ret_val.append({'result': 'error', 'cmd': 'start', 'process': '*', 'details': str(e)})
     else:
         for arg in args:
             try:
                 xmlrpc.supervisor.startProcess(arg)
+                ret_val.append({'result': 'success', 'cmd': 'start', 'process': arg, 'details': 'Started process {0}'.format(arg)})
             except Exception as e:
                 print('Exception starting process %s: %s' % (arg, e))
+                ret_val.append({'result': 'error', 'cmd': 'start', 'process': arg, 'details': str(e)})
+    return ret_val
+
 
 def restartProcesses(args):
-    stopProcesses(args)
-    startProcesses(args)
+    return stopProcesses(args).extend(startProcesses(args))
+    # ret_val = stopProcesses(args)
+    # ret_val_1 = startProcesses(args)
+    # ret_val.extend(ret_val_1)
+    # return ret_val
 
-# 'supervisor.addProcessGroup',
-# 'supervisor.clearAllProcessLogs',
-# 'supervisor.clearLog',
-# 'supervisor.clearProcessLog',
-# 'supervisor.clearProcessLogs',
-# 'supervisor.getAPIVersion',
-# 'supervisor.getAllConfigInfo',
-# 'supervisor.getAllProcessInfo',
-# 'supervisor.getIdentification',
-# 'supervisor.getPID',
-# 'supervisor.getProcessInfo',
-# 'supervisor.getState',
-# 'supervisor.getSupervisorVersion',
-# 'supervisor.getVersion',
-# 'supervisor.readLog',
-# 'supervisor.readMainLog',
-# 'supervisor.readProcessLog',
-# 'supervisor.readProcessStderrLog',
-# 'supervisor.readProcessStdoutLog',
-# 'supervisor.reloadConfig',
-# 'supervisor.removeProcessGroup',
-# 'supervisor.restart',
-# 'supervisor.sendProcessStdin',
-# 'supervisor.sendRemoteCommEvent',
-# 'supervisor.shutdown',
-# 'supervisor.startAllProcesses',
-# 'supervisor.startProcess',
-# 'supervisor.startProcessGroup',
-# 'supervisor.stopAllProcesses',
-# 'supervisor.stopProcess',
-# 'supervisor.stopProcessGroup',
-# 'supervisor.tailProcessLog',
-# 'supervisor.tailProcessStderrLog',
-# 'supervisor.tailProcessStdoutLog',
-# 'system.listMethods',
-# 'system.methodHelp',
-# 'system.methodSignature',
-# 'system.multicall'
 
 class WebSocketHandler(object):
     PushInterval = 0
@@ -100,7 +91,7 @@ class WebSocketHandler(object):
     Connection = None
 
     @classmethod
-    def on_message(self, ws, message):
+    def on_message(cls, ws, message):
         # This is where you receive messages to start, stop, and restart
         """
         This is where you receive messages to start,
@@ -109,44 +100,49 @@ class WebSocketHandler(object):
         message = {'cmd': 'stop celery'}
         message = {'cmd': 'restart web'}
         """
-        msg = json.loads(message)
-        cmd = msg['cmd'].split(' ')[0]
-        args = msg['cmd'].split(' ')[1:]
-
-        if cmd == 'start':
-            startProcesses(args)
-        elif cmd == 'stop':
-            stopProcesses(args)
-        elif cmd == 'restart':
-            restartProcesses(args)
-
-        response = {'return': 'success'}
-        ws.send(json.dumps(response))
+        print('on_message')
         print message
+        msg = json.loads(message)
+        if 'AQL' in msg:
+            pass
+        elif 'cmd' in msg:
+            cmd = msg['cmd'].split(' ')[0]
+            args = msg['cmd'].split(' ')[1:]
+
+            if cmd == 'start':
+                ret_val = startProcesses(args)
+            elif cmd == 'stop':
+                ret_val = stopProcesses(args)
+            elif cmd == 'restart':
+                ret_val = restartProcesses(args)
+
+            # response = {'return': 'success'}
+            # ws.send(json.dumps(ret_val))
 
     @classmethod
-    def on_error(self, ws, error):
+    def on_error(cls, ws, error):
         print error
 
     @classmethod
-    def on_close(self, ws):
+    def on_close(cls, ws):
         WebSocketHandler.IsConnected = False
+        WebSocketHandler.Connection = None
         print "### closed ###"
 
     @classmethod
-    def on_open(self, ws):
+    def on_open(cls, ws):
         WebSocketHandler.IsConnected = True
         WebSocketHandler.Connection = ws
         def push_stats(*args):
             while WebSocketHandler.IsConnected:
-                ws.send(json.dumps(ProcInfo.data_all()))
+                data = {SNAPSHOT_UPDATE: ProcInfo.data_all()}
+                ws.send(json.dumps(data))
                 ProcInfo.reset_all()
-                # ws.send("STATS!")
                 time.sleep(WebSocketHandler.PushInterval)
 
         WebSocketHandler.PushThread = threading.Thread(target=push_stats)
-        WebSocketHandler.PushThread.daemon = True
         WebSocketHandler.PushThread.start()
+        print('Finished with on_open')
 
 
 class ProcessMonitor():
@@ -191,7 +187,7 @@ class ProcessMonitor():
             try:
                 print('ProcessMonitor.push_data: create_connection')
                 WebSocketHandler.PushInterval = push_interval
-                ws = websocket.WebSocketApp('ws://%s:8081/agent/' % (self.url,),
+                ws = websocket.WebSocketApp('ws://%s:8081/supervisor/' % (self.url,),
                     header=["authorization: %s" % self.token],
                     on_message = WebSocketHandler.on_message,
                     on_error = WebSocketHandler.on_error,
@@ -244,15 +240,57 @@ class ProcessMonitor():
                     # This is where push_update_thread's websocket needs to push
                     # data to the server that a process's state has changed.
                     if WebSocketHandler.IsConnected:
-                        data = p.data()
+                        process_data = p.data()
                         # No need for cpu or mem data for this update since this
                         # update is about the application's running state.
-                        data.pop('cpu', None)
-                        data.pop('mem', None)
-                        WebSocketHandler.Connection.send(json.dumps([data]))
+                        process_data.pop('cpu', None)
+                        process_data.pop('mem', None)
+                        data = {STATE_UPDATE: process_data}
+                        print('process_data: %s' % process_data)
+                        print('data: %s' % data)
+                        WebSocketHandler.Connection.send(json.dumps(data))
             except Exception as e:
                 print('Exception: %s' % e)
                 print('Closing connection...')
                 logger.info('Closing connection...')
                 connection.close()
                 logger.info('Connection closed.')
+
+# 'supervisor.addProcessGroup',
+# 'supervisor.clearAllProcessLogs',
+# 'supervisor.clearLog',
+# 'supervisor.clearProcessLog',
+# 'supervisor.clearProcessLogs',
+# 'supervisor.getAPIVersion',
+# 'supervisor.getAllConfigInfo',
+# 'supervisor.getAllProcessInfo',
+# 'supervisor.getIdentification',
+# 'supervisor.getPID',
+# 'supervisor.getProcessInfo',
+# 'supervisor.getState',
+# 'supervisor.getSupervisorVersion',
+# 'supervisor.getVersion',
+# 'supervisor.readLog',
+# 'supervisor.readMainLog',
+# 'supervisor.readProcessLog',
+# 'supervisor.readProcessStderrLog',
+# 'supervisor.readProcessStdoutLog',
+# 'supervisor.reloadConfig',
+# 'supervisor.removeProcessGroup',
+# 'supervisor.restart',
+# 'supervisor.sendProcessStdin',
+# 'supervisor.sendRemoteCommEvent',
+# 'supervisor.shutdown',
+# 'supervisor.startAllProcesses',
+# 'supervisor.startProcess',
+# 'supervisor.startProcessGroup',
+# 'supervisor.stopAllProcesses',
+# 'supervisor.stopProcess',
+# 'supervisor.stopProcessGroup',
+# 'supervisor.tailProcessLog',
+# 'supervisor.tailProcessStderrLog',
+# 'supervisor.tailProcessStdoutLog',
+# 'system.listMethods',
+# 'system.methodHelp',
+# 'system.methodSignature',
+# 'system.multicall'
