@@ -139,7 +139,3 @@ class SupervisorProcess(object):
     def reset_all(self):
         for p in self.all():
             p.reset()
-
-    @classmethod
-    def purge(self):
-        self.processes = {}
