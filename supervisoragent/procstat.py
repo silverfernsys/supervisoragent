@@ -84,6 +84,13 @@ class MemoryStats():
     def __init__(self, pid):
         self.pid = pid
 
+    def memory(self):
+        (memory_used, memory_total,
+        free_mem, cached, cached_swap,
+        total_swap, free_swap) = self.__stat__()
+
+        return memory_used
+    
     def memory_percent(self):
         (memory_used, memory_total,
         free_mem, cached, cached_swap,

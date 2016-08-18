@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 from procstat import CPUStats, MemoryStats
+from systemstat import stats
 from time import time
 
 STATE_MAP = {
@@ -13,7 +14,7 @@ STATE_MAP = {
     'UNKNOWN': 1000 
 }
 
-class ProcInfo(object):
+class SupervisorProcess(object):
     processes = {}
 
     def __init__(self, name, group, pid, state, statename, start):
@@ -23,12 +24,11 @@ class ProcInfo(object):
         self._state = state
         self._statename = statename
         self.start = start
-        self.cpu = []
-        self.mem = []
+        self.stats = []
         self.cpu_stats = CPUStats(self.pid)
         self.mem_stats = MemoryStats(self.pid)
 
-        ProcInfo.add(self)
+        self.add(self)
 
     @property
     def state(self):
@@ -59,9 +59,18 @@ class ProcInfo(object):
     def update(self):
         timestamp = time()
         user_util, sys_util = self.cpu_stats.cpu_percent_change()
-        memory_percent = self.mem_stats.memory_percent()
-        self.cpu.append([timestamp, user_util])
-        self.mem.append([timestamp, memory_percent])
+        memory = self.mem_stats.memory()
+        self.stats.append([timestamp, user_util, memory])
+
+    def state_update(self):
+        return {'state_update': {'name': self.name,
+            'group': self.group, 'pid': self._pid,
+            'state': self._state, 'statename': self._statename,
+            'start': self.start } }
+
+    @classmethod
+    def system_stats(cls):
+        return {'system_stats': stats()}
     
     def _binary_search_helper(self, array, value, start, end):
         if (start >= end):
@@ -77,86 +86,60 @@ class ProcInfo(object):
         index = self._binary_search_helper(array, value, 0, len(array))
         return array[index:len(array)]
 
-    def get_cpu(self, time=None):
+    def get_stats(self, time=None):
         if time is None:
-            return self.cpu
+            return self.stats
         else:
-            return self._binary_search(self.cpu, time)
+            return self._binary_search(self.stats, time)
 
-    def get_mem(self, time=None):
-        if time is None:
-            return self.mem
-        else:
-            return self._binary_search(self.mem, time)
+    def __repr__(self):
+        return 'name: {self.name}, group: {self.group}, pid: {self._pid}, ' \
+            'stats: {self.stats}'.format(self=self)
 
-    def __str__(self):
-        return 'name: %s, group: %s, pid: %s, cpu: %s, mem: %s' % (self.name, self.group, self._pid, self.cpu, self.mem)
-
-    def to_dict(self):
-        return {'name': self.name,
-        'group': self.group,
-        'pid': self._pid,
-        'state': self._state,
-        'statename': self._statename,
-        'start': self.start,
-        'cpu': self.cpu,
-        'mem': self.mem,
-        }
-
-
-    def data(self):
-        return {'name': self.name,
-        'group': self.group,
-        'pid': self._pid,
-        'state': self._state,
-        'statename': self._statename,
-        'start': self.start,
-        'cpu': self.cpu,
-        'mem': self.mem,
-        }
+    def __json__(self):
+        return {'name': self.name, 'group': self.group,
+            'pid': self._pid, 'state': self._state,
+            'start': self.start, 'stats': self.stats, 
+            'statename': self._statename }
 
     def reset(self):
-        self.cpu = []
-        self.mem = []
+        self.stats = []
 
     @classmethod
     def get(self, group, name):
         try:
-            return ProcInfo.processes[group][name]
+            return self.processes[group][name]
         except:
             None
 
     @classmethod
     def add(self, proc):
-        if proc.group not in ProcInfo.processes:
-            ProcInfo.processes[proc.group] = {}
-        ProcInfo.processes[proc.group][proc.name] = proc
+        if proc.group not in self.processes:
+            self.processes[proc.group] = {}
+        self.processes[proc.group][proc.name] = proc
 
     # A class method generator that yields the contents of the 'processes' dictionary
     @classmethod
     def all(self):
-        for group in ProcInfo.processes:
-            for name in ProcInfo.processes[group]:
-                yield ProcInfo.processes[group][name]
+        for group in self.processes:
+            for name in self.processes[group]:
+                yield self.processes[group][name]
         raise StopIteration()
 
     @classmethod
     def updateall(self):
-        for p in ProcInfo.all():
+        for p in self.all():
             p.update()
 
     @classmethod
-    def data_all(self):
-        data = []
-        for p in ProcInfo.all():
-            data.append(p.data())
-        return data
+    def snapshot_update(cls):
+        return {'snapshot_update': [p.__json__() for p in cls.all()]}
 
     @classmethod
     def reset_all(self):
-        for p in ProcInfo.all():
+        for p in self.all():
             p.reset()
 
     @classmethod
     def purge(self):
-        ProcInfo.processes = {}
+        self.processes = {}

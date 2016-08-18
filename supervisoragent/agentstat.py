@@ -45,7 +45,7 @@ def main():
         print('---------')
         print('Agent Version:      %s' % data['agent_version'])
         print('Supervisor Version: %s' % data['supervisor_version'])
-        print('Uptime:             %s' %  uptime_formatter(time.time() - data['start_time']))
+        print('Uptime:             %s' % uptime_formatter(time.time() - data['start_time']))
         print('Sample interval:    %s' % uptime_formatter(int(data['sample_interval'])))
         print('Push interval:      %s' % uptime_formatter(int(data['push_interval'])))
         print('Log level:          %s' % data['log_level'])
