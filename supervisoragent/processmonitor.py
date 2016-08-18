@@ -176,7 +176,7 @@ class ProcessMonitor():
 
     def update_stats(self):
         while True:
-            SupervisorProcess.updateall()
+            SupervisorProcess.update_all()
             time.sleep(self.sample_interval)
 
     def push_data(self, push_interval):

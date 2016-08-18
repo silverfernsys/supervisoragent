@@ -127,7 +127,7 @@ class SupervisorProcess(object):
         raise StopIteration()
 
     @classmethod
-    def updateall(self):
+    def update_all(self):
         for p in self.all():
             p.update()
 

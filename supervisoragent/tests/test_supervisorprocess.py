@@ -18,25 +18,25 @@ class SupervisorProcessTest(unittest.TestCase):
         self.assertEqual(self.proc_0, SupervisorProcess.get('soffice', 'soffice'), "get works")
         self.assertEqual(self.proc_1, SupervisorProcess.get('sremote', 'sremote'), "get works")
 
-    def test_updateall(self):
+    def test_update_all(self):
         before_count_proc_0 = len(self.proc_0.stats)
         before_count_proc_1 = len(self.proc_1.stats)
-        SupervisorProcess.updateall()
-        SupervisorProcess.updateall()
-        SupervisorProcess.updateall()
+        SupervisorProcess.update_all()
+        SupervisorProcess.update_all()
+        SupervisorProcess.update_all()
         after_count_proc_0 = len(self.proc_0.stats)
         after_count_proc_1 = len(self.proc_1.stats)
         self.assertEqual(before_count_proc_0 + 3, after_count_proc_0, "after_count_proc_0 is 3 more than before_count_proc_0")
         self.assertEqual(before_count_proc_1 + 3, after_count_proc_1, "after_count_proc_1 is 3 more than before_count_proc_1")
 
     def test_stats_filter(self):
-        SupervisorProcess.updateall()
-        SupervisorProcess.updateall()
-        SupervisorProcess.updateall()
+        SupervisorProcess.update_all()
+        SupervisorProcess.update_all()
+        SupervisorProcess.update_all()
         timestamp = time()
-        SupervisorProcess.updateall()
-        SupervisorProcess.updateall()
-        SupervisorProcess.updateall()
+        SupervisorProcess.update_all()
+        SupervisorProcess.update_all()
+        SupervisorProcess.update_all()
         self.assertEqual(len(self.proc_0.get_stats(timestamp)), 3, "filtered stats length == 3")
         self.assertEqual(len(self.proc_1.get_stats(timestamp)), 3, "filtered stats length == 3")
 
