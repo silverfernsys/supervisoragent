@@ -1,254 +1,128 @@
 #!/usr/bin/env python
-import httplib
-import json
-import logging
-import os
-import socket
-import time
-import threading
-import websocket
-import xmlrpclib
-import sys
-from supervisorprocess import SupervisorProcess
+from time import time, sleep
+from threading import Thread
+from procstat import CPUStats, MemoryStats
+from ws import WebSocketConnection
+from systemstat import stats
 
+STATE_MAP = {
+    'STOPPED': 0,
+    'STARTING': 10,
+    'RUNNING': 20,
+    'BACKOFF': 30,
+    'STOPPING': 40,
+    'EXITED': 100,
+    'FATAL': 200,
+    'UNKNOWN': 1000 
+}
 
-class UnixStreamHTTPConnection(httplib.HTTPConnection):
-    def connect(self):
-        try:
-            self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            self.sock.connect(self.host)
-        except socket.error as e:
-            sys.exit('Supervisor not running.')
+class ProcessMonitor(object):
+    def __init__(self, rpc, sample_interval):
+        self.processes = {}
+        self.rpc = rpc
+        self.sample_interval = sample_interval
+        self.get_processes()
 
+    def get_processes(self):
+        data = self.rpc.xmlrpc.supervisor.getAllProcessInfo()
+        for row in data:
+            process = SupervisorProcess(**row)
+            self.processes[(process.name, process.group)] = process
 
-class UnixStreamTransport(xmlrpclib.Transport, object):
-    def __init__(self, socket_path):
-        self.socket_path = socket_path
-        super(UnixStreamTransport, self).__init__()
+    def start(self):
+        thread = Thread(target=self.monitor)
+        thread.daemon = True
+        thread.start()
 
-    def make_connection(self, host):
-        return UnixStreamHTTPConnection(self.socket_path)
+    # {u'from_state': u'BACKOFF', u'group': u'agenteventlistener', u'name': u'agenteventlistener',
+    # u'statename': u'STARTING', u'pid': None, u'eventname': u'PROCESS_STATE_STARTING'}
+    def update(self, name, group, pid, statename, from_state, eventname, **kwargs):
+        info = self.rpc.xmlrpc.supervisor.getProcessInfo(name)
+        process = self.processes.get((name, group))
+        process.update(pid, statename, info['start'])
+        if WebSocketConnection.is_connected:
+            print('STATE_UPDATE: data = %s' % process.state_update())
+            WebSocketConnection.connection.send(json.dumps(process.state_update()))
 
+    def snapshot(self):
+        return {'snapshot': [p.__json__() for p in self.processes.values()]}
 
-xmlrpc = xmlrpclib.Server('http://arg_unused', transport=UnixStreamTransport('/var/run/supervisor.sock'))
+    def reset(self):
+        for p in self.processes.values():
+            p.reset()
 
+    def sample(self):
+        for p in self.processes.values():
+            p.sample()
 
-def stopProcesses(args):
-    ret_val = []
-    if len(args) == 1 and '*' in args:
-        try:
-            xmlrpc.supervisor.stopAllProcesses()
-            ret_val.append({'result': 'success', 'cmd': 'stop', 'process': '*', 'details': 'Stopped all processes'})
-        except Exception as e:
-            print('Exception stopping all processes')
-            ret_val.append({'result': 'error', 'cmd': 'stop', 'process': '*', 'details': str(e)})
-    else:
-        for arg in args:
-            try:
-                xmlrpc.supervisor.stopProcess(arg)
-                ret_val.append({'result': 'success', 'cmd': 'stop', 'process': arg, 'details': 'Stopped process {0}'.format(arg)})
-            except Exception as e:
-                print('Exception stopping process %s: %s' % (arg, e))
-                ret_val.append({'result': 'error', 'cmd': 'stop', 'process': arg, 'details': str(e)})
-    return ret_val
-
-
-def startProcesses(args):
-    ret_val = []
-    if len(args) == 1 and '*' in args:
-        try:
-            xmlrpc.supervisor.startAllProcesses()
-            ret_val.append({'result': 'success', 'cmd': 'start', 'process': '*', 'details': 'Started all processes'})
-        except Exception as e:
-            print('Exception starting all processes')
-            ret_val.append({'result': 'error', 'cmd': 'start', 'process': '*', 'details': str(e)})
-    else:
-        for arg in args:
-            try:
-                xmlrpc.supervisor.startProcess(arg)
-                ret_val.append({'result': 'success', 'cmd': 'start', 'process': arg, 'details': 'Started process {0}'.format(arg)})
-            except Exception as e:
-                print('Exception starting process %s: %s' % (arg, e))
-                ret_val.append({'result': 'error', 'cmd': 'start', 'process': arg, 'details': str(e)})
-    return ret_val
-
-
-def restartProcesses(args):
-    return stopProcesses(args).extend(startProcesses(args))
-
-
-class WebSocketHandler(object):
-    PushInterval = 0
-    PushThread = None
-    IsConnected = False
-    Connection = None
-
-    @classmethod
-    def on_message(cls, ws, message):
-        """This is where you receive messages to
-        start, stop, and restart supervisor processes.
-        message = {'cmd': 'start *'}
-        message = {'cmd': 'stop celery'}
-        message = {'cmd': 'restart web'}
-        """
-        msg = json.loads(message)
-        if 'cmd' in msg:
-            cmd = msg['cmd'].split(' ')[0]
-            args = msg['cmd'].split(' ')[1:]
-
-            if cmd == 'start':
-                ret_val = startProcesses(args)
-            elif cmd == 'stop':
-                ret_val = stopProcesses(args)
-            elif cmd == 'restart':
-                ret_val = restartProcesses(args)
-
-    @classmethod
-    def on_error(cls, ws, error):
-        print error
-
-    @classmethod
-    def on_close(cls, ws):
-        WebSocketHandler.IsConnected = False
-        WebSocketHandler.Connection = None
-        print "### closed ###"
-
-    @classmethod
-    def on_open(cls, ws):
-        WebSocketHandler.IsConnected = True
-        WebSocketHandler.Connection = ws
-        ws.send(json.dumps(SupervisorProcess.system_stats()))
-        def push_stats(*args):
-            while WebSocketHandler.IsConnected:
-                print('SNAPSHOT_UPDATE: %s' % SupervisorProcess.snapshot_update())
-                ws.send(json.dumps(SupervisorProcess.snapshot_update()))
-                SupervisorProcess.reset_all()
-                time.sleep(WebSocketHandler.PushInterval)
-
-        WebSocketHandler.PushThread = threading.Thread(target=push_stats)
-        WebSocketHandler.PushThread.start()
-        print('Finished with on_open')
-
-
-class ProcessMonitor():
-    """
-    This class pushes and pulls process update information.
-    """
-    version = 0.0
-
-    def __init__(self, **kwargs):
-        self.sample_interval = kwargs['sample_interval']
-        self.push_interval = kwargs['push_interval']
-        self.token = kwargs['token']
-        self.url = kwargs['url']
-        self.version = float(xmlrpc.supervisor.getVersion())
-
-        data = xmlrpc.supervisor.getAllProcessInfo()
-        print(xmlrpc.supervisor.getState())
-        print(xmlrpc.system.listMethods())
-        # print('data: %s' % data)
-        for d in data:
-            SupervisorProcess(d['group'], d['name'], d['pid'], d['state'], d['statename'], d['start'])
-
-        update_stats_thread = threading.Thread(target=self.update_stats, args=())
-        update_stats_thread.daemon = True
-        update_stats_thread.start()
-
-        push_data_thread = threading.Thread(target=self.push_data, args=([self.push_interval]))
-        push_data_thread.daemon = True
-        push_data_thread.start()
-
-        event_server_thread = threading.Thread(target=self.event_server, args=())
-        event_server_thread.daemon = True
-        event_server_thread.start()
-
-        self.restart_eventlistener()
-
-    def restart_eventlistener(self):
-        try:
-            xmlrpc.supervisor.stopProcess('agenteventlistener')
-        except:
-            pass
-        try:
-            xmlrpc.supervisor.startProcess('agenteventlistener')
-        except:
-            pass
-
-    def update_stats(self):
+    def monitor(self):
         while True:
-            SupervisorProcess.update_all()
-            time.sleep(self.sample_interval)
+            self.sample()
+            sleep(self.sample_interval)
 
-    def push_data(self, push_interval):
-        while True:
-            try:
-                print('ProcessMonitor.push_data: create_connection')
-                WebSocketHandler.PushInterval = push_interval
-                ws = websocket.WebSocketApp('ws://%s:8099/supervisor/' % (self.url,),
-                    header=["authorization: %s" % self.token],
-                    on_message = WebSocketHandler.on_message,
-                    on_error = WebSocketHandler.on_error,
-                    on_open = WebSocketHandler.on_open,
-                    on_close = WebSocketHandler.on_close)
-                ws.run_forever()
-            except Exception as e:
-                print("Exception: %s" % e)
-            time.sleep(60) # Wait 60 seconds before attemping to reconnect
+    def __repr__(self):
+        return '<Manager ({0})'.format(', '.join(str(p) for p in self.processes.values()))
 
-    def event_server(self):
-        logger = logging.getLogger('Event Server')
-        # Create a UDS socket
-        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 
-        server_address = '/run/supervisoragent.sock'
+class SupervisorProcess(object):
+    def __init__(self, name, group, pid, state, statename, start, **kwargs):
+        self.name = name
+        self.group = group
+        if statename == 'STOPPED':
+            self.pid = None
+        else:
+            self.pid = int(pid)
+        self.state = state
+        self.statename = statename
+        self.start = start
+        self.stats = []
+        self.cpu_stats = CPUStats(self.pid)
+        self.mem_stats = MemoryStats(self.pid)
 
-        # Make sure the socket does not already exist
-        try:
-            os.unlink(server_address)
-        except OSError:
-            if os.path.exists(server_address):
-                raise
+    def update(self, pid, statename, start, **kwargs):
+        if statename == 'STOPPED':
+            self.pid = None
+            self.cpu_stats = None
+            self.mem_stats = None
+        else:
+            if pid != self.pid:
+                self.pid = pid
+                self.cpu_stats = CPUStats(pid)
+                self.mem_stats = MemoryStats(pid)
+        self.statename = statename
+        self.state = STATE_MAP[statename]
+        self.start = start
 
-        logger.info('Starting server at %s' % server_address)
-        sock.bind(server_address)
+    def sample(self):
+        timestamp = time()
+        if self.cpu_stats:
+            user_util, sys_util = self.cpu_stats.cpu_percent_change()
+        else:
+            user_util, sys_util = (0.0, 0.0)
 
-        # Listen for incoming connections
-        sock.listen(1)
+        if self.mem_stats:
+            memory = self.mem_stats.memory()
+        else:
+            memory = 0
 
-        while True:
-            # Wait for a connection
-            logger.info('Waiting for a connection...')
-            connection, client_address = sock.accept()
-            logger.info('Connected to client.')
-            try:
-                handle = connection.makefile()
-                while True:
-                    line = handle.readline()
-                    headers = dict([ x.split(':') for x in line.split() ])
-                    data = handle.read(int(headers['LENGTH']))
-                    json_data = json.loads(data)
-                    info = xmlrpc.supervisor.getProcessInfo(json_data['name'])
-                    p = SupervisorProcess.get(json_data['group'], json_data['name'])
-                    p.statename = json_data['statename']
-                    if (p.statename == 'STOPPED'):
-                        p.pid = None
-                    else:
-                        p.pid = json_data['pid']
-                    p.start = info['start']
-                    # We need to now send data off on the websocket!
-                    # This is where push_update_thread's websocket needs to push
-                    # data to the server that a process's state has changed.
-                    if WebSocketHandler.IsConnected:
-                        # process_data = p.data()
-                        # No need for stats data for this update since this
-                        # update is about the application's running state.
-                        # process_data.pop('stats', None)
-                        # data = {STATE_UPDATE: process_data}
-                        print('STATE_UPDATE: data = %s' % p.state_update())
-                        WebSocketHandler.Connection.send(json.dumps(p.state_update()))
-            except Exception as e:
-                print('Exception: %s' % e)
-                print('Closing connection...')
-                logger.info('Closing connection...')
-                connection.close()
-                logger.info('Connection closed.')
+        self.stats.append([timestamp, user_util, memory])
+
+    def reset(self):
+        self.stats = []
+
+    def state_update(self):
+        return {'state': {'name': self.name,
+            'group': self.group, 'pid': self.pid,
+            'state': self.state, 'statename': self.statename,
+            'start': self.start } }
+
+    def __repr__(self):
+        return '<SupervisorProcess (name: {self.name}, group: {self.group}, pid: {self.pid}, ' \
+            'start: {self.start}, state: {self.state}, statename: {self.statename}, ' \
+            'stats: {self.stats})'.format(self=self)
+
+    def __json__(self):
+        return {'name': self.name, 'group': self.group,
+            'pid': self.pid, 'state': self.state,
+            'start': self.start, 'stats': self.stats, 
+            'statename': self.statename }

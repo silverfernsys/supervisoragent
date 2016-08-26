@@ -21,8 +21,8 @@ class EventListener():
 
     def start(self):
         # Connect the socket to the port where the server is listening
-        server_address = "/run/supervisoragent.sock"
-        self.logger.info('Attemping to connect to %s' % server_address)
+        server_address = '/run/supervisoragent.sock'
+        self.logger.info('Attemping to connect to {0}'.format(server_address))
         try:
             self.socket.connect(server_address)
         except socket.error as error:
@@ -37,7 +37,7 @@ class EventListener():
             line = sys.stdin.readline()
 
             # read event payload and send to socket
-            # don't forget the new-line character!!!!
+            # don't forget the new-line character
             headers = dict([ x.split(':') for x in line.split() ])
             raw_data = sys.stdin.read(int(headers['len']))
             data = dict([ x.split(':') for x in raw_data.split()])
@@ -52,12 +52,12 @@ class EventListener():
                 response['eventname'] = headers['eventname']
                 response['statename'] = headers['eventname'].split('_')[2]
                 try:
-                    response['pid'] = data['pid']
+                    response['pid'] = int(data['pid'])
                 except:
                     response['pid'] = None
 
                 json_str = json.dumps(response)
-                self.socket.sendall('LENGTH:%s\n' % len(json_str))
+                self.socket.sendall('LENGTH:{0}\n'.format(len(json_str)))
                 self.socket.sendall(json_str)
                 self.logger.info(json_str)
             except Exception as e:
