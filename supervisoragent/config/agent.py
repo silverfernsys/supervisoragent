@@ -2,7 +2,7 @@ from os.path import dirname, join, expanduser
 from base import Config
 
 
-class AgentConfig(object):
+class AgentConfig(Config):
     possible_args = [
         ('sample_interval', float),
         ('push_interval', float),
@@ -20,9 +20,7 @@ class AgentConfig(object):
         '/etc/supervisoragent/supervisoragent.conf'
     ]
 
-    def __init__(self):
-        self.loadConfig()
-        self.initLogging()
+    config_name = 'supervisor'
 
     def config_parser(self, parser):
         parser.add_argument("--config", help="configuration file to read. /etc/supervisoragent/supervisoragent.conf otherwise")
