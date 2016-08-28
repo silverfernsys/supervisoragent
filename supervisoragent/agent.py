@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 import signal
 import time
-from config import config
+from config.agent import config
 from setproctitle import setproctitle
 from rpc import RPC
 from eventmonitor import EventMonitor
@@ -23,6 +23,7 @@ class Agent(object):
         signal.signal(signal.SIGTERM, self.shutdown)
         signal.signal(signal.SIGINT, self.shutdown)
         self.config = config
+        self.config.parse()
 
     def run(self):
         self.run_loop = True
