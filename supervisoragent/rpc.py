@@ -1,12 +1,25 @@
 import httplib, socket, xmlrpclib
 
+
+class RPCError(Exception):
+    def __init__(self, arg, errno):
+        if errno == 2:
+            self.message = 'Error when attempting to open "{0}".'.format(arg)
+        elif errno == 13:
+            self.message = 'Permission denied when attempting to open "{0}".'.format(arg)
+        else:
+            self.message ='Unknown error when attempting to open "{0}".'.format(arg)
+        self.arg = arg
+        self.errno = errno
+
+
 class UnixStreamHTTPConnection(httplib.HTTPConnection):
     def connect(self):
         try:
             self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             self.sock.connect(self.host)
         except socket.error as e:
-            sys.exit('Supervisor not running.')
+            raise RPCError(self.host, e.errno)
 
 
 class UnixStreamTransport(xmlrpclib.Transport, object):

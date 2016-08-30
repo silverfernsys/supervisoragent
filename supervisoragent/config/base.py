@@ -1,15 +1,5 @@
-import logging
 from ConfigParser import SafeConfigParser, NoOptionError, NoSectionError
 from argparse import ArgumentParser
-
-
-log_vals = {
-    'CRITICAL': logging.CRITICAL,
-    'ERROR': logging.ERROR,
-    'WARNING': logging.WARNING, 
-    'INFO': logging.INFO,
-    'DEBUG': logging.DEBUG, 
-    'NOTSET': logging.NOTSET }
 
 
 class ConfigError(Exception):
@@ -36,7 +26,6 @@ class Config(object):
 
     def parse(self):
         self.parse_config(self.config_search_paths)
-        self.init_logging()
 
     def config_parser(self, parser):
         raise NotImplemented('config_parser must be implemented')
@@ -66,11 +55,6 @@ class Config(object):
             data['command'] = args.subparser_name
 
         self.__dict__.update(data)
-
-    def init_logging(self):
-        logging.basicConfig(filename=self.log_file,
-            format='%(asctime)s::%(levelname)s::%(name)s::%(message)s',
-            level=log_vals.get(self.log_level, logging.DEBUG))
 
     def __repr__(self):
         return '<Config({0}>'.format(', '.join('%s=%r' % (k, v)

@@ -3,8 +3,9 @@ import signal, sys, time
 from config import ConfigError
 from config.agent import config
 from setproctitle import setproctitle
-from rpc import RPC
+from rpc import RPC, RPCError
 from eventmonitor import EventMonitor
+from log import config_logging, LoggingError
 from processmonitor import ProcessMonitor
 from statusserver import StatusServer
 from ws import WebsocketManager
@@ -24,6 +25,7 @@ class Agent(object):
         signal.signal(signal.SIGINT, self.shutdown)
         self.config = config
         self.config.parse()
+        config_logging(config)
 
     def run(self):
         self.run_loop = True
@@ -39,20 +41,25 @@ class Agent(object):
         while self.run_loop:
             time.sleep(0.1)
 
-    def data(self):
-        ret_data = self.config.__dict__()
-        ret_data['supervisor_version'] = ProcessMonitor.version
-        ret_data['start_time'] = self.start_time
-        ret_data['agent_version'] = AGENT_VERSION
-        return ret_data
-
 
 def main():
     try:
         agent = Agent(config)
         agent.run()
+    except RPCError as e:
+        if e.errno == 2:
+            print('{0} Please check to see if supervisor is running. ' \
+                'Exiting'.format(e.message))
+        elif e.errno == 13:
+            print('{0} Please run agent as root. Exiting'.format(e.message))
+        else:
+            print('{0} Exiting.'.format(e.message))
+        sys.exit(1)
+    except LoggingError as e:
+        print('{0} Please run agent as root. Exiting.'.format(e.message))
+        sys.exit(1)
     except Exception as e:
-        print('{0} Exiting.\n'.format(e.message))
+        print('{0} Exiting.'.format(e.message))
         sys.exit(1)
 
 
