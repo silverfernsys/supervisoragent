@@ -3,6 +3,7 @@ import json
 from time import time, sleep
 from threading import Thread
 from procstat import CPUStats, MemoryStats
+from psutil import Process, NoSuchProcess
 from ws import WebSocketConnection
 from systemstat import stats
 
@@ -78,18 +79,18 @@ class SupervisorProcess(object):
         self.start = start
         self.stats = []
         self.cpu_stats = CPUStats(self.pid)
-        self.mem_stats = MemoryStats(self.pid)
+        self.process = Process(self.pid)
 
     def update(self, pid, statename, start, **kwargs):
         if statename == 'STOPPED':
             self.pid = None
             self.cpu_stats = None
-            self.mem_stats = None
+            self.process = None
         else:
             if pid != self.pid:
-                self.pid = pid
-                self.cpu_stats = CPUStats(pid)
-                self.mem_stats = MemoryStats(pid)
+                self.pid = int(pid)
+                self.cpu_stats = CPUStats(self.pid)
+                self.process = Process(self.pid)
         self.statename = statename
         self.state = STATE_MAP[statename]
         self.start = start
@@ -101,8 +102,11 @@ class SupervisorProcess(object):
         else:
             user_util, sys_util = (0.0, 0.0)
 
-        if self.mem_stats:
-            memory = self.mem_stats.memory()
+        if self.process:
+            try:
+                memory = self.process.memory_full_info().uss
+            except NoSuchProcess:
+                memory = 0
         else:
             memory = 0
 
