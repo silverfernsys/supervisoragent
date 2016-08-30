@@ -1,13 +1,15 @@
 #!/usr/bin/env python
-import json
-import time
+import json, time
 from threading import Thread
+from urlparse import urlparse
 from websocket import WebSocketApp
 from systemstat import stats
+
 
 START = 'start'
 STOP = 'stop'
 RESTART = 'restart'
+
 
 class WebSocketConnection(object):
     push_interval = 0.0
@@ -66,6 +68,10 @@ class WebSocketConnection(object):
 
 class WebsocketManager():
     def __init__(self, rpc, process_monitor, push_interval, url, token, **kwargs):
+        parsed = urlparse(url)
+        if parsed.scheme not in ['ws', 'wss']:
+            raise ValueError('Websocket scheme "ws" or "wss" not provided in url.')
+
         self.thread = Thread(target=self.run_socket,
             args=([rpc, process_monitor, push_interval, url, token]))
         self.thread.daemon = True
@@ -80,7 +86,7 @@ class WebsocketManager():
                 WebSocketConnection.process_monitor = process_monitor
                 WebSocketConnection.push_interval = push_interval
                 WebSocketConnection.rpc = rpc
-                ws = WebSocketApp('ws://{0}:8099/supervisor/'.format(url),
+                ws = WebSocketApp('{0}/supervisor/'.format(url.strip('/')),
                     header=['authorization: {0}'.format(token)],
                     on_message = WebSocketConnection.on_message,
                     on_error = WebSocketConnection.on_error,
