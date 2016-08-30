@@ -1,6 +1,6 @@
 #! /usr/bin/env python
-import signal
-import time
+import signal, sys, time
+from config import ConfigError
 from config.agent import config
 from setproctitle import setproctitle
 from rpc import RPC
@@ -23,7 +23,11 @@ class Agent(object):
         signal.signal(signal.SIGTERM, self.shutdown)
         signal.signal(signal.SIGINT, self.shutdown)
         self.config = config
-        self.config.parse()
+        try:
+            self.config.parse()
+        except ConfigError as e:
+            print('{0} Exiting.\n'.format(e.message))
+            sys.exit(1)
 
     def run(self):
         self.run_loop = True
