@@ -1,2 +1,4 @@
 .DS_Store
 *.pyc
+.cache
+test/__pycache__

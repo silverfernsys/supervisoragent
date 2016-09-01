@@ -104,6 +104,7 @@ class SupervisorProcess(object):
 
         if self.process:
             try:
+                # http://www.pybloggers.com/psutil-4-0-0-and-how-to-get-real-process-memory-and-environ-in-python/
                 memory = self.process.memory_full_info().uss
             except NoSuchProcess:
                 memory = 0

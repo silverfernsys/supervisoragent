@@ -1,10 +1,6 @@
-#!/usr/bin/env python
-import sys, os
-sys.path.insert(0, os.path.split(os.path.split(os.path.dirname(os.path.abspath(__file__)))[0])[0])
-
-import unittest
+import os, unittest
 from time import time
-from supervisoragent.supervisorprocess import SupervisorProcess
+from supervisorprocess import SupervisorProcess
 
 class SupervisorProcessTest(unittest.TestCase):
     def setUp(self):
@@ -56,6 +52,3 @@ class SupervisorProcessTest(unittest.TestCase):
         self.assertEqual(self.proc_0.state, 200, "state is 200")
         self.proc_0.statename = 'UNKNOWN'
         self.assertEqual(self.proc_0.state, 1000, "state is 200")
-
-if __name__ == '__main__':
-    unittest.main()
