@@ -1,9 +1,10 @@
 import os, unittest
 from time import time
-from supervisorprocess import SupervisorProcess
+from processmonitor import ProcessMonitor, SupervisorProcess
 
 class SupervisorProcessTest(unittest.TestCase):
     def setUp(self):
+        self.processmonitor = ProcessMonitor(rpc=None, sample_interval=1)
         self.proc_0 = SupervisorProcess('soffice', 'soffice', None, 0, 'STOPPED', 1.000)
         self.proc_1 = SupervisorProcess('sremote', 'sremote', 9123, 0, 'STOPPED', 1.000)
 
