@@ -14,6 +14,7 @@
 
 import os
 import sys
+from setuptools import setup, find_packages
 
 py_version = sys.version_info[:2]
 
@@ -32,7 +33,6 @@ testing_extras = tests_require + [
     'pytest-cov',
     ]
 
-from setuptools import setup, find_packages
 here = os.path.abspath(os.path.dirname(__file__))
 try:
     README = open(os.path.join(here, 'README.rst')).read()
@@ -73,7 +73,8 @@ dist = setup(
     version=supervisor_agent_version,
     license='BSD 2, (https://opensource.org/licenses/BSD-2-Clause)',
     url='http://silverfern.io/supervisoragent',
-    description="A system for monitoring and controlling process state under UNIX",
+    description="A system for monitoring and controlling "
+                "process state under UNIX",
     long_description=README + '\n\n' + CHANGES,
     classifiers=CLASSIFIERS,
     author="Marc Wilson",
@@ -97,5 +98,6 @@ dist = setup(
         ],
     },
     # https://docs.python.org/2/distutils/setupscript.html#installing-additional-files
-    data_files=[('/etc/supervisoragent', ['scripts/conf/supervisoragent.conf'])]
+    data_files=[('/etc/supervisoragent',
+                ['scripts/conf/supervisoragent.conf'])]
 )

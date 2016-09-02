@@ -2,10 +2,9 @@
 import json
 from time import time, sleep
 from threading import Thread
-from procstat import CPUStats, MemoryStats
+from procstat import CPUStats
 from psutil import Process, NoSuchProcess
 from ws import WebSocketConnection
-from systemstat import stats
 
 STATE_MAP = {
     'STOPPED': 0,
@@ -15,10 +14,12 @@ STATE_MAP = {
     'STOPPING': 40,
     'EXITED': 100,
     'FATAL': 200,
-    'UNKNOWN': 1000 
+    'UNKNOWN': 1000
 }
 
+
 class ProcessMonitor(object):
+
     def __init__(self, rpc, sample_interval):
         self.processes = {}
         self.rpc = rpc
@@ -36,15 +37,18 @@ class ProcessMonitor(object):
         thread.daemon = True
         thread.start()
 
-    # {u'from_state': u'BACKOFF', u'group': u'agenteventlistener', u'name': u'agenteventlistener',
-    # u'statename': u'STARTING', u'pid': None, u'eventname': u'PROCESS_STATE_STARTING'}
-    def update(self, name, group, pid, statename, from_state, eventname, **kwargs):
+    # {u'from_state': u'BACKOFF', u'group': u'agenteventlistener',
+    # u'name': u'agenteventlistener', u'statename': u'STARTING',
+    # u'pid': None, u'eventname': u'PROCESS_STATE_STARTING'}
+    def update(self, name, group, pid, statename, from_state,
+               eventname, **kwargs):
         info = self.rpc.xmlrpc.supervisor.getProcessInfo(name)
         process = self.processes.get((name, group))
         process.update(pid, statename, info['start'])
         if WebSocketConnection.is_connected:
             print('STATE_UPDATE: data = %s' % process.state_update())
-            WebSocketConnection.connection.send(json.dumps(process.state_update()))
+            WebSocketConnection.connection.send(
+                json.dumps(process.state_update()))
 
     def snapshot(self):
         return {'snapshot': [p.__json__() for p in self.processes.values()]}
@@ -63,10 +67,12 @@ class ProcessMonitor(object):
             sleep(self.sample_interval)
 
     def __repr__(self):
-        return '<Manager ({0})'.format(', '.join(str(p) for p in self.processes.values()))
+        values = ', '.join(str(p) for p in self.processes.values())
+        return '<Manager ({0})'.format(values)
 
 
 class SupervisorProcess(object):
+
     def __init__(self, name, group, pid, state, statename, start, **kwargs):
         self.name = name
         self.group = group
@@ -108,7 +114,7 @@ class SupervisorProcess(object):
         if self.cpu_stats:
             user_util, sys_util = self.cpu_stats.cpu_percent_change()
         else:
-            user_util, sys_util = (0.0, 0.0)
+            user_util = 0.0
 
         if self.process:
             try:
@@ -129,17 +135,17 @@ class SupervisorProcess(object):
 
     def state_update(self):
         return {'state': {'name': self.name,
-            'group': self.group, 'pid': self.pid,
-            'state': self.state, 'statename': self.statename,
-            'start': self.start } }
+                          'group': self.group, 'pid': self.pid,
+                          'state': self.state, 'statename': self.statename,
+                          'start': self.start}}
 
     def __repr__(self):
-        return '<SupervisorProcess (name: {self.name}, group: {self.group}, pid: {self.pid}, ' \
-            'start: {self.start}, state: {self.state}, statename: {self.statename}, ' \
-            'stats: {self.stats})'.format(self=self)
+        return '<SupervisorProcess (name: {self.name}, group: {self.group}, '
+        'pid: {self.pid}, start: {self.start}, state: {self.state}, '
+        'statename: {self.statename}, stats: {self.stats})'.format(self=self)
 
     def __json__(self):
         return {'name': self.name, 'group': self.group,
-            'pid': self.pid, 'state': self.state,
-            'start': self.start, 'stats': self.stats, 
-            'statename': self.statename }
+                'pid': self.pid, 'state': self.state,
+                'start': self.start, 'stats': self.stats,
+                'statename': self.statename}

@@ -1,8 +1,12 @@
-import json, os, socket
+import json
+import os
+import socket
 from logging import getLogger
 from threading import Thread
 
+
 class EventMonitor(object):
+
     def __init__(self, process_monitor):
         self.process_monitor = process_monitor
 
@@ -40,7 +44,7 @@ class EventMonitor(object):
                 handle = connection.makefile()
                 while True:
                     line = handle.readline()
-                    headers = dict([ x.split(':') for x in line.split() ])
+                    headers = dict([x.split(':') for x in line.split()])
                     data = handle.read(int(headers['LENGTH']))
                     json_data = json.loads(data)
                     self.process_monitor.update(**json_data)

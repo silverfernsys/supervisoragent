@@ -1,5 +1,7 @@
 #! /usr/bin/env python
-import signal, sys, time
+import signal
+import sys
+import time
 from config import ConfigError
 from config.agent import config
 from setproctitle import setproctitle
@@ -7,13 +9,13 @@ from rpc import RPC, RPCError
 from eventmonitor import EventMonitor
 from log import config_logging, LoggingError
 from processmonitor import ProcessMonitor
-# from statusserver import StatusServer
 from ws import WebsocketManager
 
 AGENT_VERSION = '0.0.1'
 
 
 class Agent(object):
+
     def shutdown(self, sig, frame):
         self.run_loop = False
 
@@ -24,8 +26,16 @@ class Agent(object):
         signal.signal(signal.SIGTERM, self.shutdown)
         signal.signal(signal.SIGINT, self.shutdown)
         self.config = config
-        self.config.parse()
-        config_logging(config)
+        try:
+            self.config.parse()
+        except ConfigError as e:
+            print(e)
+            sys.exit(1)
+        try:
+            config_logging(config)
+        except LoggingError as e:
+            print(e)
+            sys.exit(1)
 
     def run(self):
         self.run_loop = True
@@ -34,7 +44,8 @@ class Agent(object):
         process_monitor.start()
         event_monitor = EventMonitor(process_monitor)
         event_monitor.start()
-        websocket_manager = WebsocketManager(rpc, process_monitor, **vars(self.config))
+        websocket_manager = WebsocketManager(
+            rpc, process_monitor, **vars(self.config))
         websocket_manager.start()
         rpc.restartProcesses(['agenteventlistener'])
 
@@ -48,8 +59,8 @@ def main():
         agent.run()
     except RPCError as e:
         if e.errno == 2:
-            print('{0} Please check to see if supervisor is running. ' \
-                'Exiting'.format(e.message))
+            print('{0} Please check to see if supervisor is running. '
+                  'Exiting'.format(e.message))
         elif e.errno == 13:
             print('{0} Please run agent as root. Exiting'.format(e.message))
         else:

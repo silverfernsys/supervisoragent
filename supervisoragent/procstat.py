@@ -1,5 +1,7 @@
 #! /usr/bin/env python
-import sys, subprocess
+import sys
+import subprocess
+
 
 class CPUStats():
     pid = 0
@@ -10,13 +12,13 @@ class CPUStats():
     def __init__(self, pid):
         self.pid = pid
         (self.utime_before,
-        self.stime_before,
-        self.time_total_before) = self.__stat__()
+         self.stime_before,
+         self.time_total_before) = self.__stat__()
 
     def cpu_percent(self):
         (utime_after,
-        stime_after,
-        time_total_after) = self.__stat__()
+         stime_after,
+         time_total_after) = self.__stat__()
 
         if time_total_after > 0:
             user_util = 100.0 * float(utime_after) / time_total_after
@@ -27,19 +29,21 @@ class CPUStats():
 
         return (user_util, sys_util)
 
-
     def cpu_percent_change(self):
         (utime_after,
-        stime_after,
-        time_total_after) = self.__stat__()
+         stime_after,
+         time_total_after) = self.__stat__()
 
         if ((time_total_after - self.time_total_before) != 0.0):
-            user_util = 100.0 * float(utime_after - self.utime_before) / (time_total_after - self.time_total_before)
-            sys_util = 100.0 * float(stime_after - self.stime_before) / (time_total_after - self.time_total_before)
+            user_util = 100.0 * \
+                float(utime_after - self.utime_before) / \
+                (time_total_after - self.time_total_before)
+            sys_util = 100.0 * float(stime_after - self.stime_before) / \
+                (time_total_after - self.time_total_before)
         else:
             user_util = 0.0
             sys_util = 0.0
-        
+
         self.utime_before = utime_after
         self.stime_before = stime_after
         self.time_total_before = time_total_after
@@ -54,7 +58,7 @@ class CPUStats():
             # cat /proc/<pid>/stat
             command = ['cat', '/proc/%s/stat' % self.pid]
             p = subprocess.Popen(command, stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE)
+                                 stderr=subprocess.PIPE)
             out, err = p.communicate()
             stat_list = out.split(' ')
             utime = int(stat_list[13])
@@ -62,7 +66,7 @@ class CPUStats():
             # cat /proc/stat
             command = ['cat', '/proc/stat']
             p = subprocess.Popen(command, stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE)
+                                 stderr=subprocess.PIPE)
             out, err = p.communicate()
             stat_list = out.split('\n')
             cpu_timings = stat_list[0].split(' ')[1:]
@@ -73,8 +77,7 @@ class CPUStats():
                 except:
                     pass
             return utime, stime, time_total
-        except Exception as e:
-            # print("CPUStats.__stat__ Exception: %s" % e)
+        except Exception:
             return 0, 0, 0
 
 
@@ -86,15 +89,15 @@ class MemoryStats():
 
     def memory(self):
         (memory_used, memory_total,
-        free_mem, cached, cached_swap,
-        total_swap, free_swap) = self.__stat__()
+         free_mem, cached, cached_swap,
+         total_swap, free_swap) = self.__stat__()
 
         return memory_used
-    
+
     def memory_percent(self):
         (memory_used, memory_total,
-        free_mem, cached, cached_swap,
-        total_swap, free_swap) = self.__stat__()
+         free_mem, cached, cached_swap,
+         total_swap, free_swap) = self.__stat__()
 
         if memory_total > 0.0:
             return 100.0 * float(memory_used) / float(memory_total)
@@ -109,7 +112,7 @@ class MemoryStats():
             # cat /proc/<pid>/smaps
             command = ['cat', '/proc/%s/smaps' % self.pid]
             p = subprocess.Popen(command, stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE)
+                                 stderr=subprocess.PIPE)
             out, err = p.communicate()
             # print("out1: %s" % out)
             stat_list = out.split('\n')
@@ -126,7 +129,7 @@ class MemoryStats():
             # egrep --color 'Mem|Cache|Swap' /proc/meminfo
             command = ['egrep', '--color', 'Mem|Cache|Swap', '/proc/meminfo']
             p = subprocess.Popen(command, stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE)
+                                 stderr=subprocess.PIPE)
             out, err = p.communicate()
             # print("out2: %s" % out)
             stat_list = out.split('\n')
@@ -165,8 +168,8 @@ class MemoryStats():
                     free_swap = mem
 
             return (total_process_mem,
-                total_mem, free_mem, cached,
-                cached_swap, total_swap, free_swap)
+                    total_mem, free_mem, cached,
+                    cached_swap, total_swap, free_swap)
         except Exception as e:
             print(e)
             return (0, 0, 0, 0, 0, 0, 0)

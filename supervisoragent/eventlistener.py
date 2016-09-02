@@ -6,6 +6,7 @@ import json
 
 
 class EventListener():
+
     def __init__(self):
         self.logger = logging.getLogger('Event Listener')
         self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -32,15 +33,15 @@ class EventListener():
         while 1:
             # transition from ACKNOWLEDGED to READY
             self.write_stdout('READY\n')
-            
+
             # read header line
             line = sys.stdin.readline()
 
             # read event payload and send to socket
             # don't forget the new-line character
-            headers = dict([ x.split(':') for x in line.split() ])
+            headers = dict([x.split(':') for x in line.split()])
             raw_data = sys.stdin.read(int(headers['len']))
-            data = dict([ x.split(':') for x in raw_data.split()])
+            data = dict([x.split(':') for x in raw_data.split()])
 
             self.logger.info(raw_data)
 
@@ -66,8 +67,11 @@ class EventListener():
             # transition from READY to ACKNOWLEDGED
             self.write_stdout('RESULT 2\nOK')
 
+
 def main():
-    logging.basicConfig(filename='/tmp/eventlistener.log', format='%(asctime)s::%(levelname)s::%(name)s::%(message)s', level=logging.DEBUG)
+    format = '%(asctime)s::%(levelname)s::%(name)s::%(message)s'
+    logging.basicConfig(filename='/tmp/eventlistener.log',
+                        format=format, level=logging.DEBUG)
     event_listener = EventListener()
     event_listener.start()
 
