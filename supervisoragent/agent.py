@@ -7,7 +7,7 @@ from rpc import RPC, RPCError
 from eventmonitor import EventMonitor
 from log import config_logging, LoggingError
 from processmonitor import ProcessMonitor
-from statusserver import StatusServer
+# from statusserver import StatusServer
 from ws import WebsocketManager
 
 AGENT_VERSION = '0.0.1'

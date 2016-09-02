@@ -72,14 +72,19 @@ class SupervisorProcess(object):
         self.group = group
         if statename == 'STOPPED':
             self.pid = None
+            self.cpu_stats = None
+            self.process = None
         else:
             self.pid = int(pid)
+            self.cpu_stats = CPUStats(self.pid)
+            try:
+                self.process = Process(self.pid)
+            except NoSuchProcess:
+                self.process = None
         self.state = state
         self.statename = statename
         self.start = start
         self.stats = []
-        self.cpu_stats = CPUStats(self.pid)
-        self.process = Process(self.pid)
 
     def update(self, pid, statename, start, **kwargs):
         if statename == 'STOPPED':
@@ -90,7 +95,10 @@ class SupervisorProcess(object):
             if pid != self.pid:
                 self.pid = int(pid)
                 self.cpu_stats = CPUStats(self.pid)
-                self.process = Process(self.pid)
+                try:
+                    self.process = Process(self.pid)
+                except NoSuchProcess:
+                    self.process = None
         self.statename = statename
         self.state = STATE_MAP[statename]
         self.start = start
@@ -109,8 +117,11 @@ class SupervisorProcess(object):
             except NoSuchProcess:
                 memory = 0
         else:
-            memory = 0
-
+            try:
+                self.process = Process(self.pid)
+                memory = self.process.memory_full_info().uss
+            except NoSuchProcess:
+                memory = 0
         self.stats.append([timestamp, user_util, memory])
 
     def reset(self):
