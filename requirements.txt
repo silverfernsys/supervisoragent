@@ -1,5 +1,6 @@
 autopep8==1.2.4
 configparser==3.5.0
+configutil==0.0.1.dev2
 enum34==1.1.6
 flake8==3.0.4
 funcsigs==0.4

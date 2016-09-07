@@ -2,7 +2,7 @@
 import signal
 import sys
 import time
-from config import ConfigError
+from configutil import ConfigError
 from config.agent import config
 from setproctitle import setproctitle
 from rpc import RPC, RPCError
@@ -32,7 +32,8 @@ class Agent(object):
             print(e)
             sys.exit(1)
         try:
-            config_logging(config)
+            config_logging(config.arguments.supervisor.log_level,
+                config.arguments.supervisor.log_file)
         except LoggingError as e:
             print(e)
             sys.exit(1)
@@ -40,12 +41,12 @@ class Agent(object):
     def run(self):
         self.run_loop = True
         rpc = RPC()
-        process_monitor = ProcessMonitor(rpc, self.config.sample_interval)
+        process_monitor = ProcessMonitor(rpc, self.config.arguments.supervisor.sample_interval)
         process_monitor.start()
         event_monitor = EventMonitor(process_monitor)
         event_monitor.start()
         websocket_manager = WebsocketManager(
-            rpc, process_monitor, **vars(self.config))
+            rpc, process_monitor, **vars(self.config.arguments.supervisor))
         websocket_manager.start()
         rpc.restartProcesses(['agenteventlistener'])
 

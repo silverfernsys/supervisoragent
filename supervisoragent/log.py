@@ -23,11 +23,11 @@ class LogFileError(LoggingError):
         self.arg = arg
 
 
-def config_logging(config):
+def config_logging(log_level, log_file):
     try:
         format = '%(asctime)s::%(levelname)s::%(name)s::%(message)s'
-        level = log_vals.get(config.log_level, logging.DEBUG)
-        logging.basicConfig(filename=config.log_file,
+        level = log_vals.get(log_level, logging.DEBUG)
+        logging.basicConfig(filename=log_file,
                             format=format, level=level)
     except IOError:
-        raise LogFileError(config.log_file)
+        raise LogFileError(log_file)
