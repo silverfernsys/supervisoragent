@@ -3,15 +3,13 @@ import signal
 import sys
 import time
 from configutil import ConfigError
-from config.agent import config
 from setproctitle import setproctitle
-from rpc import RPC, RPCError
-from eventmonitor import EventMonitor
-from log import config_logging, LoggingError
-from processmonitor import ProcessMonitor
-from ws import WebsocketManager
-
-AGENT_VERSION = '0.0.1'
+from supervisoragent.config.agent import config
+from supervisoragent.eventmonitor import EventMonitor
+from supervisoragent.log import config_logging, LoggingError
+from supervisoragent.processmonitor import ProcessMonitor
+from supervisoragent.rpc import RPC, RPCError
+from supervisoragent.ws import WebsocketManager
 
 
 class Agent(object):

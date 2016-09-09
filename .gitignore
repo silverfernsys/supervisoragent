@@ -1,4 +1,14 @@
+# general things to ignore
 .DS_Store
-*.pyc
+build/
+dist/
+*.egg-info/
+*.egg
+*.py[cod]
+__pycache__/
+*.so
+*~
+
 .cache
-test/__pycache__
+.tox
+.coverage

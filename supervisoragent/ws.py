@@ -4,7 +4,7 @@ import time
 from threading import Thread
 from urlparse import urlparse
 from websocket import WebSocketApp
-from systemstat import stats
+from supervisoragent.systemstat import stats
 
 
 START = 'start'

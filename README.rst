@@ -1,8 +1,15 @@
-===============
-SupervisorAgent
+supervisoragent
 ===============
 
-A monitoring agent for supervisor processes.
+A monitoring agent for `supervisor <http://supervisord.org>`_ that sends its data to an `agentserver <https://github.com/silverfernsys/agentserver>`_ server.
 
-TODO:
-Add optional port number to config file. Currently is hard coded to 8099. Default to port 80 or 443.
+**Commands**
+
+.. code:: python
+
+  supervisoragent
+
+**TODOs**
+
+- Documentation.
+- Expand code coverage and unit tests.

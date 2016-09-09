@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 import json
+from psutil import Process, NoSuchProcess
 from time import time, sleep
 from threading import Thread
-from procstat import CPUStats
-from psutil import Process, NoSuchProcess
-from ws import WebSocketConnection
+from supervisoragent.procstat import CPUStats
+from supervisoragent.ws import WebSocketConnection
+
 
 STATE_MAP = {
     'STOPPED': 0,

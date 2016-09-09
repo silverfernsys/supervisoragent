@@ -2,7 +2,7 @@ import mock
 import os
 import subprocess
 import unittest
-from procstat import CPUStats, MemoryStats
+from supervisoragent.procstat import CPUStats, MemoryStats
 
 
 class ProcStatTest(unittest.TestCase):

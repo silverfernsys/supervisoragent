@@ -1,4 +1,0 @@
-0.0.1 or "Planning 1" (Unreleased)
--------------------------------
-
-Initial release.

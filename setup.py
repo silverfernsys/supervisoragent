@@ -1,103 +1,93 @@
-##############################################################################
-#
-# Copyright (c) 2016 SilverFern Systems.
-# All Rights Reserved.
-#
-# This software is subject to the provisions of the BSD-like license at
-# http://www.repoze.org/LICENSE.txt.  A copy of the license should accompany
-# this distribution.  THIS SOFTWARE IS PROVIDED "AS IS" AND ANY AND ALL
-# EXPRESS OR IMPLIED WARRANTIES ARE DISCLAIMED, INCLUDING, BUT NOT LIMITED TO,
-# THE IMPLIED WARRANTIES OF TITLE, MERCHANTABILITY, AGAINST INFRINGEMENT, AND
-# FITNESS FOR A PARTICULAR PURPOSE
-#
-##############################################################################
-
-import os
-import sys
+# Always prefer setuptools over distutils
 from setuptools import setup, find_packages
+# To use a consistent encoding
+from codecs import open
+from os import path
 
-py_version = sys.version_info[:2]
+import supervisoragent
 
-if py_version < (2, 6):
-    raise RuntimeError('On Python 2, Supervisor requires Python 2.6 or later')
-elif (3, 0) < py_version < (3, 2):
-    raise RuntimeError('On Python 3, Supervisor requires Python 3.2 or later')
+here = path.abspath(path.dirname(__file__))
 
-requires = ['websocket-client>=0.35.0']
-tests_require = []
-if py_version < (3, 3):
-    tests_require.append('mock')
+# Get the long description from the README file
+with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
+    long_description = f.read()
 
-testing_extras = tests_require + [
-    'pytest',
-    'pytest-cov',
-    ]
-
-here = os.path.abspath(os.path.dirname(__file__))
-try:
-    README = open(os.path.join(here, 'README.rst')).read()
-    CHANGES = open(os.path.join(here, 'CHANGES.txt')).read()
-except:
-    README = """\
-Supervisor-agent is a process that monitors supervisor processes
-and sends their state to an upstream server as specified in the
-config file. """
-    CHANGES = ''
-
-# https://pypi.python.org/pypi?%3Aaction=list_classifiers
-CLASSIFIERS = [
-    'Development Status :: 1 - Planning',
-    'Environment :: No Input/Output (Daemon)',
-    'Intended Audience :: System Administrators',
-    'Natural Language :: English',
-    'Operating System :: POSIX',
-    'Topic :: System :: Boot',
-    'Topic :: System :: Monitoring',
-    'Topic :: System :: Systems Administration',
-    "Programming Language :: Python",
-    "Programming Language :: Python :: 2",
-    "Programming Language :: Python :: 2.6",
-    "Programming Language :: Python :: 2.7",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.2",
-    "Programming Language :: Python :: 3.3",
-    "Programming Language :: Python :: 3.4",
-    "Programming Language :: Python :: 3.5",
-]
-
-version_txt = os.path.join(here, 'supervisoragent/version.txt')
-supervisor_agent_version = open(version_txt).read().strip()
-
-dist = setup(
+setup(
     name='supervisoragent',
-    version=supervisor_agent_version,
-    license='BSD 2, (https://opensource.org/licenses/BSD-2-Clause)',
-    url='http://silverfern.io/supervisoragent',
-    description="A system for monitoring and controlling "
-                "process state under UNIX",
-    long_description=README + '\n\n' + CHANGES,
-    classifiers=CLASSIFIERS,
-    author="Marc Wilson",
-    author_email="marcw@silverfern.io",
-    maintainer="Marc Wilson",
-    maintainer_email="marcw@silverfern.io",
+
+    # Versions should comply with PEP440.  For a discussion on single-sourcing
+    # the version across setup.py and the project code, see
+    # https://packaging.python.org/en/latest/single_source_version.html
+    version=supervisoragent.__version__,
+
+    description='An agent for monitoring applications run by supervisor',
+    long_description=long_description,
+
+    # The project's main homepage.
+    url='https://github.com/silverfernsys/supervisoragent',
+
+    # Author details
+    author='Silver Fern Systems',
+    author_email='dev@silverfern.io',
+
+    # Choose your license
+    license='BSD',
+
+    # See https://pypi.python.org/pypi?%3Aaction=list_classifiers
+    classifiers=[
+        # How mature is this project? Common values are
+        #   3 - Alpha
+        #   4 - Beta
+        #   5 - Production/Stable
+        'Development Status :: 3 - Alpha',
+
+        # Indicate who your project is intended for
+        'Intended Audience :: Developers',
+        'Topic :: Software Development :: Build Tools',
+
+        # Pick your license as you wish (should match "license" above)
+        'License :: OSI Approved :: BSD License',
+
+        # Specify the Python versions you support here. In particular, ensure
+        # that you indicate whether you support Python 2, Python 3 or both.
+        'Programming Language :: Python :: 2.7',
+    ],
+
+    # What does your project relate to?
+    keywords='monitoring development',
+
+    # You can just specify the packages manually here if your project is
+    # simple. Or you can use find_packages().
     packages=find_packages(),
-    install_requires=requires,
+
+    # List run-time dependencies here.  These will be installed by pip when
+    # your project is installed. For an analysis of "install_requires" vs pip's
+    # requirements files see:
+    # https://packaging.python.org/en/latest/requirements.html
+    install_requires=[
+        'configutil',
+        'psutil',
+        'setproctitle',
+        'websocket-client'
+    ],
+
+    # List additional groups of dependencies here (e.g. development
+    # dependencies). You can install these using the following syntax,
+    # for example:
+    # $ pip install -e .[dev,test]
     extras_require={
-        # 'iterparse': ['cElementTree >= 1.0.2'],
-        'testing': testing_extras,
-        },
-    tests_require=tests_require,
+        'test': ['coverage', 'pytest', 'mock'],
+    },
+    
     include_package_data=True,
-    zip_safe=False,
-    test_suite="supervisor-agent.tests",
+
+    # # To provide executable scripts, use entry points in preference to the
+    # # "scripts" keyword. Entry points provide cross-platform support and allow
+    # # pip to create the appropriate form of executable for the target platform.
     entry_points={
         'console_scripts': [
-            'supervisoragent = supervisoragent.agent:main',
-            'supervisoragentcfg = supervisoragent.agentcfg:main',
+            'supervisoragent=supervisoragent.agent:main',
+            'eventmonitor=supervisoragent.eventlistener:main'
         ],
     },
-    # https://docs.python.org/2/distutils/setupscript.html#installing-additional-files
-    data_files=[('/etc/supervisoragent',
-                ['scripts/conf/supervisoragent.conf'])]
 )
