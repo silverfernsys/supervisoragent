@@ -1,1 +1,2 @@
 recursive-include supervisoragent/data *.conf
+recursive-include test/resources *.txt

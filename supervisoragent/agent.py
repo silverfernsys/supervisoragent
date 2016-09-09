@@ -33,7 +33,7 @@ class Agent(object):
             config_logging(config.arguments.supervisor.log_level,
                 config.arguments.supervisor.log_file)
         except LoggingError as e:
-            print(e)
+            print(e.message)
             sys.exit(1)
 
     def run(self):
