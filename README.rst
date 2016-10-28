@@ -1,3 +1,8 @@
+.. image:: https://img.shields.io/pypi/v/supervisoragent.svg
+    :target: https://pypi.python.org/pypi/supervisoragent
+.. image:: https://img.shields.io/pypi/l/supervisoragent.svg
+    :target: https://pypi.python.org/pypi/supervisoragent
+
 supervisoragent
 ===============
 
