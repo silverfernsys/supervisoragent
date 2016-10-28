@@ -2,6 +2,15 @@
     :target: https://pypi.python.org/pypi/supervisoragent
 .. image:: https://img.shields.io/pypi/l/supervisoragent.svg
     :target: https://pypi.python.org/pypi/supervisoragent
+.. image:: https://img.shields.io/pypi/status/supervisoragent.svg
+    :target: https://pypi.python.org/pypi/supervisoragent
+.. image:: https://img.shields.io/pypi/implementation/supervisoragent.svg
+    :target: https://pypi.python.org/pypi/supervisoragent
+.. image:: https://img.shields.io/pypi/pyversions/supervisoragent.svg
+    :target: https://pypi.python.org/pypi/supervisoragent
+.. image:: https://img.shields.io/pypi/format/supervisoragent.svg
+    :target: https://pypi.python.org/pypi/supervisoragent
+.. image:: https://img.shields.io/librariesio/github/silverfernsys/supervisoragent.svg
 
 supervisoragent
 ===============
