@@ -76,7 +76,7 @@ setup(
     # for example:
     # $ pip install -e .[dev,test]
     extras_require={
-        'test': ['coverage', 'pytest', 'mock'],
+        'test': ['coverage', 'codecov', 'pytest', 'mock'],
     },
     
     include_package_data=True,

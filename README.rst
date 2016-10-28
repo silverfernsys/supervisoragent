@@ -1,5 +1,9 @@
 .. image:: https://img.shields.io/pypi/v/supervisoragent.svg
     :target: https://pypi.python.org/pypi/supervisoragent
+.. image:: https://travis-ci.org/silverfernsys/supervisoragent.svg?branch=master
+    :target: https://travis-ci.org/silverfernsys/supervisoragent
+.. image:: https://codecov.io/gh/silverfernsys/supervisoragent/branch/master/graph/badge.svg
+    :target: https://codecov.io/gh/silverfernsys/supervisoragent
 .. image:: https://img.shields.io/pypi/l/supervisoragent.svg
     :target: https://pypi.python.org/pypi/supervisoragent
 .. image:: https://img.shields.io/pypi/status/supervisoragent.svg

@@ -1,3 +1,5 @@
+coverage
+codecov
 configutil
 psutil
 setproctitle
